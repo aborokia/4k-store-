@@ -1,0 +1,89 @@
+// Prisma Schema for Angel Store (Game Accounts & Keys Store)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id            Int          @id @default(autoincrement())
+  title         String
+  description   String?
+  price         Float
+  discountPrice Float?
+  imageUrl      String?
+  platform      String       // e.g. PC, PlayStation, Xbox, Steam
+  isAvailable   Boolean      @default(true)
+  categoryId    Int
+  category      Category     @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  digitalKeys   DigitalKey[]
+  orderItems    OrderItem[]
+}
+
+model DigitalKey {
+  id          Int        @id @default(autoincrement())
+  productId   Int
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  codeData    String     // Game activation code or Account credentials (Username:Password)
+  isSold      Boolean    @default(false)
+  soldAt      DateTime?
+  orderItem   OrderItem?
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id])
+  totalAmount   Float
+  paymentStatus OrderStatus @default(PENDING)
+  paymentMethod String      // Vodafone Cash, InstaPay, Visa, PayPal
+  createdAt     DateTime    @default(now())
+  orderItems    OrderItem[]
+}
+
+model OrderItem {
+  id           Int        @id @default(autoincrement())
+  orderId      Int
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    Int
+  product      Product    @relation(fields: [productId], references: [id])
+  digitalKeyId Int        @unique
+  digitalKey   DigitalKey @relation(fields: [digitalKeyId], references: [id])
+  price        Float
+}
